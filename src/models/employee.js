@@ -18,7 +18,6 @@ const employeeSchema = new mongoose.Schema(
     department: {
       required: true,
       type: String,
-      unique: true,
     },
   },
   {
