@@ -1,12 +1,23 @@
 import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
+import cors from 'cors';
 import { Employee } from './models/employee.js';
 import { Department } from './models/department.js';
 
 const PORT = process.env.PORT || 3000;
 
 const mongoString = process.env.DATABASE_URL;
+
+const corsOptions = {
+  origin: ['http://localhost:3000', 'https://andrii996.github.io'],
+  optionsSuccessStatus: 200,
+};
+
+const app = express();
+
+app.use(cors(corsOptions));
+app.use(express.json());
 
 mongoose.connect(mongoString);
 const database = mongoose.connection;
@@ -18,10 +29,6 @@ database.on('error', (error) => {
 database.once('connected', () => {
   console.log('Database Connected');
 });
-
-const app = express();
-
-app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Hellow to you from server');
@@ -54,15 +61,13 @@ app.post('/employees', async (req, res) => {
     email: email,
   });
 
-  console.log(existEmployee);
-
   if (existEmployee.length > 0) {
     return res.status(409).send({ message: 'User already exists' });
   }
 
-  const departmentExists = await Department.findOne({ department: department });
+  const departmentExists = await Department.findOne({ name: department });
 
-  if (departmentExists) {
+  if (!departmentExists) {
     return res.status(404).send({ message: 'No such department' });
   }
 
@@ -75,10 +80,13 @@ app.post('/employees', async (req, res) => {
 
   await newEmployee.save();
 
-  res.status(201).send({
-    message: 'Employee registered successfully',
-    employee: newEmployee,
+  const [savedEmployee] = await Employee.find({
+    name: name,
+    surname: surname,
+    email: email,
   });
+
+  res.status(201).send(savedEmployee);
 });
 
 app.patch('/employees', async (req, res) => {
@@ -114,9 +122,7 @@ app.patch('/employees', async (req, res) => {
 
   await employee.save();
 
-  res
-    .status(200)
-    .json({ message: 'Employee data updated successfully', employee });
+  res.status(200).json(await Employee.findOne({ _id: id }));
 });
 
 app.delete('/employees', async (req, res) => {
